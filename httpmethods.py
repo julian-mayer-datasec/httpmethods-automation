@@ -4,7 +4,9 @@
 import argparse
 import sys
 from concurrent.futures import ThreadPoolExecutor
+import ssl
 import requests
+import urllib3
 from rich.console import Console
 from rich import box
 from rich.table import Table
@@ -107,6 +109,14 @@ def get_options():
         help="Use only safe methods for requests (default: False)"
     )
     parser.add_argument(
+        '-au',
+        '--automateUnsafe',
+        action="store_true",
+        default=None,
+        dest='automateUnsafe',
+        help="Use only for automation scripts that test unsafe methods"
+    )
+    parser.add_argument(
         "-w",
         "--wordlist",
         dest="wordlist",
@@ -167,7 +177,7 @@ def methods_from_wordlist(wordlist):
         with open(options.wordlist, "r") as infile:
             methods += infile.read().split()
     except Exception as e:
-        logger.error(f"Had some kind of error loading the wordlist ¯\_(ツ)_/¯: {e}")
+        logger.error(f"Had some kind of error loading the wordlist ¯\\_(ツ)_/¯: {e}")
 
 
 def methods_from_http_options(console, options, proxies, headers, cookies):
@@ -189,9 +199,11 @@ def methods_from_http_options(console, options, proxies, headers, cookies):
         logger.debug(r.headers)
         if "Allow" in r.headers:
             logger.info("URL answers with a list of options: {}".format(r.headers["Allow"]))
-            include_options_methods = console.input(
-                "[bold orange3][?][/bold orange3] Do you want to add these methods to the test (be careful, some methods can be dangerous)? [Y/n] ")
-            if not include_options_methods.lower() == "n":
+            include_options_methods = "n"
+            if not options.automateUnsafe:
+                include_options_methods = console.input(
+                    "[bold orange3][?][/bold orange3] Do you want to add these methods to the test (be careful, some methods can be dangerous)? [Y/n] ")
+            if not include_options_methods.lower() == "n" or options.automateUnsafe:
                 for method in r.headers["Allow"].replace(" ", "").split(","):
                     if method not in options_methods:
                         logger.debug(f"Adding new method {method} to methods")
@@ -302,9 +314,12 @@ def main(options, logger, console):
     filtered_methods = []
     for method in methods:
         if method in ["DELETE", "COPY", "PUT", "PATCH", "UNCHECKOUT"]:
+            if options.automateUnsafe:
+                filtered_methods.append(method)
+                continue
             if not options.safe:
                 test_dangerous_method = console.input(
-                    f"[bold orange3][?][/bold orange3] Do you really want to test method {method} (can be dangerous)? \[y/N] ")
+                    f"[bold orange3][?][/bold orange3] Do you really want to test method {method} (can be dangerous)? \\[y/N] ")
                 if not test_dangerous_method.lower() == "y":
                     logger.verbose(f"Method {method} will not be tested")
                 else:
@@ -339,13 +354,14 @@ if __name__ == '__main__':
         console = Console()
         if not options.verify:
             # Disable warnings of insecure connection for invalid cerificates
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             # Allow use of deprecated and weak cipher methods
-            requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
-            try:
-                requests.packages.urllib3.contrib.pyopenssl.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
-            except AttributeError:
-                pass
+            #urllib3.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
+            ssl._create_default_https_context = ssl._create_unverified_context
+            # try:
+            #     urllib3.contrib.pyopenssl.util.ssl_.DEFAULT_CIPHERS += ':HIGH:!DH:!aNULL'
+            # except AttributeError:
+            #     pass
         main(options, logger, console)
     except KeyboardInterrupt:
         logger.info("Terminating script...")
