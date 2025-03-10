@@ -173,11 +173,15 @@ def get_options():
 
 def methods_from_wordlist(wordlist):
     logger.verbose(f"Retrieving methods from wordlist {wordlist}")
+    wordlist_methods = []
     try:
-        with open(options.wordlist, "r") as infile:
-            methods += infile.read().split()
+        with open(wordlist, "r") as infile:
+            wordlist_methods += infile.read().split()
+
     except Exception as e:
         logger.error(f"Had some kind of error loading the wordlist ¯\\_(ツ)_/¯: {e}")
+
+    return wordlist_methods
 
 
 def methods_from_http_options(console, options, proxies, headers, cookies):
