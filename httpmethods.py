@@ -307,7 +307,7 @@ def main(options, logger, console):
         headers = {}
 
     if options.wordlist is not None:
-        methods += methods_from_wordlist(options.wordlist)
+        methods = methods_from_wordlist(options.wordlist)
     methods += methods_from_http_options(console, options, proxies, headers, cookies)
 
     # Sort uniq
