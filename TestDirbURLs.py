@@ -33,9 +33,18 @@ def startHTTP_Methods_Tester_colorized(urls: list[str]):
         print(f"--- Test {url} ---\n")
         pty.spawn(["python3", "httpmethods.py", "-k", "-au", url])
 
+def startHTTP_Methods_Tester_wordlist(urls: list[str], wordlist: str):
+    for url in urls:
+        print(f"--- Test {url} ---\n")
+        pty.spawn(["python3", "httpmethods.py", "-k", "-au", "-w", wordlist, url])
+
 
 if __name__ == "__main__":
     dirbFile = input("Enter path to dirb result file: ")
     urls = getURLsFromDirbResults(dirbFile)
-    print(f"Following URLs will be probed: {urls}\n")
-    startHTTP_Methods_Tester_colorized(urls)
+    print(f"\nFollowing URLs will be probed: {urls}\n")
+    wordlistFile = input("Path to wordlist file for HTTP Verbs (empty for default list): ")
+    if wordlistFile:
+        startHTTP_Methods_Tester_wordlist(urls, wordlistFile)
+    else:
+        startHTTP_Methods_Tester_colorized(urls)
